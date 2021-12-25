@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+from mpi4py import MPI
 from TestFunc import TestFunc
 
 
@@ -52,6 +53,7 @@ class GA:
 
         # maxit boyutunda dizi tanımlanıyor (en iyi çözümlerin sonuçları tutulacak)
         bestcost = np.empty(self.maxit)
+        gBests = np.empty(self.maxit)
 
 
         # Algoritma çalışmaya başlıyor
@@ -122,15 +124,25 @@ class GA:
                 popArr[-self.mrate:] = received[:self.mrate].copy()
                 pop = self.nptodict(popArr, pop)
             # print(it, bestcost[it])
+            if self.myrank == 0:
+                gBest = np.empty(1, float)
+            else:
+                gBest = None
+            lBest = bestcost[it]
+            self.comm.Reduce([lBest, MPI.FLOAT], [gBest, MPI.FLOAT], op=MPI.MIN, root=0)
+            gBests[it] = gBest
         print("GA=", bestcost[-1])
+        print(self.myrank)
+        print("GA---=", gBests[-1])
 
         # Elde edilen çıktılar döndürülüyor
-        out = {}
-        out["pop"] = pop
-        out["bestsol"] = bestsol
-        out["bestcost"] = bestcost
-
-        return out
+        # out = {}
+        # out["pop"] = pop
+        # out["bestsol"] = bestsol
+        # out["bestcost"] = bestcost
+        # out["bests"] = gBests
+        # return out
+        return gBests
         # Çaprazlam işlemi raporda anlatıldığı gibi uniform olarak yapılıyor
     def crossover(self, p1, p2, gamma=0.1):
         c1 = copy.deepcopy(p1)

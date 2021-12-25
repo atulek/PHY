@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+from mpi4py import MPI
 from TestFunc import TestFunc
 
 # ABC sınıfı oluşturuluyor
@@ -8,12 +9,11 @@ from TestFunc import TestFunc
 class ABC:
 
     # Default parametreler
-    def __init__(self, test_func, repeat, maxit, npop, nvar, comm, psize, myrank, mrate, minterval):
+    def __init__(self, test_func, maxit, npop, nvar, comm, psize, myrank, mrate, minterval):
 
         self.costfunc = test_func.costfunc
         self.varmin = test_func.varmin
         self.varmax = test_func.varmax
-        self.repeat = repeat
         self.maxit = maxit
         self.npop = npop
         self.nvar = nvar
@@ -28,127 +28,138 @@ class ABC:
 
     # ABC çalıştırılıyor
     def run(self):
-        for rpt in range(self.repeat):
 
-            # Boş bireyler oluşturuluyor
-            # empty_bee = {}
-            # empty_bee["position"] = None
-            # empty_bee["cost"] = None
+        # Boş bireyler oluşturuluyor
+        # empty_bee = {}
+        # empty_bee["position"] = None
+        # empty_bee["cost"] = None
 
-            empty_bee = {}
-            empty_bee["position"] = None
-            empty_bee["cost"] = None
-            empty_bee["velocity"] = None
-            empty_bee["best_position"] = None
-            empty_bee["best_cost"] = None
+        empty_bee = {}
+        empty_bee["position"] = None
+        empty_bee["cost"] = None
+        empty_bee["velocity"] = None
+        empty_bee["best_position"] = None
+        empty_bee["best_cost"] = None
 
-            # En iyi çözümü tutan dictionary
-            bestsol = empty_bee
-            bestsol["cost"] = np.inf
-            # İlk popülasyon rasgele oluşturuluyor
-            pop = [0] * self.npop
+        # En iyi çözümü tutan dictionary
+        bestsol = empty_bee
+        bestsol["cost"] = np.inf
+        # İlk popülasyon rasgele oluşturuluyor
+        pop = [0] * self.npop
 
+        for i in range(self.npop):
+            pop[i] = {}
+            pop[i]["position"] = np.random.uniform(self.varmin, self.varmax, self.nvar)
+            pop[i]["cost"] = self.costfunc(pop[i]["position"])
+            pop[i]["velocity"] = np.zeros(self.nvar)
+            pop[i]["best_position"] = pop[i]["position"].copy()
+            # En iyi çözüm (gerekliyse) güncelleniyor
+            if pop[i]["cost"] < bestsol["cost"]:
+                bestsol = copy.deepcopy(pop[i])
+
+        # maxit boyutunda dizi tanımlanıyor (en iyi çözümlerin sonuçları tutulacak)
+        bestcost = np.empty(self.maxit)
+        gBests = np.empty(self.maxit)
+
+        # Failure counter
+        fc = np.zeros(self.npop, int)
+
+        # Recruited Bees
+        for it in range(self.maxit):
             for i in range(self.npop):
-                pop[i] = {}
-                pop[i]["position"] = np.random.uniform(self.varmin, self.varmax, self.nvar)
-                pop[i]["cost"] = self.costfunc(pop[i]["position"])
-                pop[i]["velocity"] = np.zeros(self.nvar)
-                pop[i]["best_position"] = pop[i]["position"].copy()
-                # En iyi çözüm (gerekliyse) güncelleniyor
+                # Choose k randomly, not equal to i
+                K = np.random.permutation(self.npop)
+                X = np.where(K == i)
+                K = np.delete(K, X)
+                k = K[0]
+                # Define Acceleration Coefficient
+                phi = np.random.uniform(-1, 1, self.nvar)
+                newbee = {}
+                # New Bee Position
+                newbee["position"] = pop[i]["position"] + phi * (pop[i]["position"] - pop[k]["position"])
+                # Apply Bounds
+                newbee["position"] = self.apply_bound(newbee["position"], self.varmin, self.varmax)
+                # Evaluation
+                newbee["cost"] = self.costfunc(newbee["position"])
+                # Comparision
+                if newbee["cost"] <= pop[i]["cost"]:
+                    pop[i] = newbee.copy()
+                else:
+                    fc[i] += 1
+            # Calculate Fitness Values and Selection Probabilities
+            F = np.zeros(self.npop)
+            totalcost = 0
+            for i in range(self.npop):
+                totalcost += pop[i]["cost"]
+            meancost = totalcost / self.npop
+            for i in range(self.npop):
+                F[i] = np.exp(-pop[i]["cost"]/meancost)
+            P = F / np.sum(F)
+
+            # Onlooker bees
+            for m in range(self.nonlookerpop):
+                # Select Source Site
+                i = self.roulette_wheel_selection(P)
+                # Choose k randomly, not equal to i
+                K = np.random.permutation(self.npop)
+                X = np.where(K == i)
+                K = np.delete(K, X)
+                k = K[0]
+                # Define Acceleration Coefficient
+                phi = np.random.uniform(-1, 1, self.nvar)
+                newbee = {}
+                # New Bee Position
+                newbee["position"] = pop[i]["position"] + phi * (pop[i]["position"] - pop[k]["position"])
+                # Apply Bounds
+                newbee["position"] = self.apply_bound(newbee["position"], self.varmin, self.varmax)
+                # Evaluation
+                newbee["cost"] = self.costfunc(newbee["position"])
+                # Comparision
+                if newbee["cost"] <= pop[i]["cost"]:
+                    pop[i] = newbee.copy()
+                else:
+                    fc[i] += 1
+
+            # Scout Bees
+            for i in range(self.npop):
+                if fc[i] >= self.L:
+                    pop[i]["position"] = np.random.uniform(self.varmin, self.varmax, self.nvar)
+                    pop[i]["cost"] = self.costfunc(pop[i]["position"])
+                    fc[i] = 0
+            # Update Best Solution Ever Found
+            for i in range(self.npop):
                 if pop[i]["cost"] < bestsol["cost"]:
-                    bestsol = copy.deepcopy(pop[i])
-
-            # maxit boyutunda dizi tanımlanıyor (en iyi çözümlerin sonuçları tutulacak)
-            bestcost = np.empty(self.maxit)
-
-            # Failure counter
-            fc = np.zeros(self.npop, int)
-
-            # Recruited Bees
-            for it in range(self.maxit):
-                for i in range(self.npop):
-                    # Choose k randomly, not equal to i
-                    K = np.random.permutation(self.npop)
-                    X = np.where(K == i)
-                    K = np.delete(K, X)
-                    k = K[0]
-                    # Define Acceleration Coefficient
-                    phi = np.random.uniform(-1, 1, self.nvar)
-                    newbee = {}
-                    # New Bee Position
-                    newbee["position"] = pop[i]["position"] + phi * (pop[i]["position"] - pop[k]["position"])
-                    # Apply Bounds
-                    newbee["position"] = self.apply_bound(newbee["position"], self.varmin, self.varmax)
-                    # Evaluation
-                    newbee["cost"] = self.costfunc(newbee["position"])
-                    # Comparision
-                    if newbee["cost"] <= pop[i]["cost"]:
-                        pop[i] = newbee.copy()
-                    else:
-                        fc[i] += 1
-                # Calculate Fitness Values and Selection Probabilities
-                F = np.zeros(self.npop)
-                totalcost = 0
-                for i in range(self.npop):
-                    totalcost += pop[i]["cost"]
-                meancost = totalcost / self.npop
-                for i in range(self.npop):
-                    F[i] = np.exp(-pop[i]["cost"]/meancost)
-                P = F / np.sum(F)
-
-                # Onlooker bees
-                for m in range(self.nonlookerpop):
-                    # Select Source Site
-                    i = self.roulette_wheel_selection(P)
-                    # Choose k randomly, not equal to i
-                    K = np.random.permutation(self.npop)
-                    X = np.where(K == i)
-                    K = np.delete(K, X)
-                    k = K[0]
-                    # Define Acceleration Coefficient
-                    phi = np.random.uniform(-1, 1, self.nvar)
-                    newbee = {}
-                    # New Bee Position
-                    newbee["position"] = pop[i]["position"] + phi * (pop[i]["position"] - pop[k]["position"])
-                    # Apply Bounds
-                    newbee["position"] = self.apply_bound(newbee["position"], self.varmin, self.varmax)
-                    # Evaluation
-                    newbee["cost"] = self.costfunc(newbee["position"])
-                    # Comparision
-                    if newbee["cost"] <= pop[i]["cost"]:
-                        pop[i] = newbee.copy()
-                    else:
-                        fc[i] += 1
-
-                # Scout Bees
-                for i in range(self.npop):
-                    if fc[i] >= self.L:
-                        pop[i]["position"] = np.random.uniform(self.varmin, self.varmax, self.nvar)
-                        pop[i]["cost"] = self.costfunc(pop[i]["position"])
-                        fc[i] = 0
-                # Update Best Solution Ever Found
-                for i in range(self.npop):
-                    if pop[i]["cost"] < bestsol["cost"]:
-                        bestsol = pop[i].copy()
-                bestcost[it] = bestsol["cost"]
-                # Migration
+                    bestsol = pop[i].copy()
+            bestcost[it] = bestsol["cost"]
+            # Migration
+            # received = np.empty(popArr.shape, dtype=np.float)
+            if it % self.minterval == 0 and it != 0 and it != self.maxit:
+                pop = sorted(pop, key=lambda s: s["cost"])
+                popArr = self.dicttonp(pop)
                 # received = np.empty(popArr.shape, dtype=np.float)
-                if it % self.minterval == 0 and it != 0 and it != self.maxit:
-                    pop = sorted(pop, key=lambda s: s["cost"])
-                    popArr = self.dicttonp(pop)
-                    # received = np.empty(popArr.shape, dtype=np.float)
-                    received = self.migrate(popArr, it)
-                    popArr[-self.mrate:] = received[:self.mrate].copy()
-                    pop = self.nptodict(popArr, pop)
-                # print(it, "cost", bestcost[it])
-            print("ABC=", bestcost[-1])
+                received = self.migrate(popArr, it)
+                popArr[-self.mrate:] = received[:self.mrate].copy()
+                pop = self.nptodict(popArr, pop)
+            # print(it, "cost", bestcost[it])
+            if self.myrank == 0:
+                gBest = np.empty(1, float)
+            else:
+                gBest = None
+            lBest = bestcost[it]
+            self.comm.Reduce([lBest, MPI.FLOAT], [gBest, MPI.FLOAT], op=MPI.MIN, root=0)
+            gBests[it] = gBest
+        print("ABC=", bestcost[-1])
+        print(self.myrank)
+        print("ABC--=", gBests[-1])
+
         # Elde edilen çıktılar döndürülüyor
-        out = {}
-        out["pop"] = pop
-        out["bestsol"] = bestsol
-        out["bestcost"] = bestcost
-        # out["bests"] = bests
-        return out
+        # out = {}
+        # out["pop"] = pop
+        # out["bestsol"] = bestsol
+        # out["bestcost"] = bestcost
+        # out["gbests"] = gBests
+        # return out
+        return gBests
 
         # Çözümleri problem uzayında tutan metot
 

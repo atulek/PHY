@@ -1,14 +1,14 @@
 import numpy as np
+from mpi4py import MPI
 from TestFunc import TestFunc
 
 class PSO:
-	def __init__(self, test_func, repeat, maxit, npop, nvar, c1, c2, w, wdamp, comm, psize, myrank, mrate, minterval):
+	def __init__(self, test_func, maxit, npop, nvar, c1, c2, w, wdamp, comm, psize, myrank, mrate, minterval):
 	
 		self.costfunc = test_func.costfunc
 		self.nvar = nvar
 		self.varmin = test_func.varmin
 		self.varmax = test_func.varmax
-		self.repeat = repeat
 		self.maxit = maxit
 		self.npop = npop
 		self.c1 = c1
@@ -65,6 +65,7 @@ class PSO:
 				gbest["cost"] = pop[i]["best_cost"]
 
 		bestcost = np.empty(self.maxit)
+		gBests = np.empty(self.maxit)
 
 		# PSO Loop
 		for it in range(0, self.maxit):
@@ -100,9 +101,23 @@ class PSO:
 				received = self.migrate(popArr, it)
 				popArr[-self.mrate:] = received[:self.mrate].copy()
 				pop = self.nptodict(popArr, pop)
-
+			if self.myrank == 0:
+				gBest = np.empty(1, float)
+			else:
+				gBest = None
+			lBest = bestcost[it]
+			self.comm.Reduce([lBest, MPI.FLOAT], [gBest, MPI.FLOAT], op=MPI.MIN, root=0)
+			gBests[it] = gBest
 		print("PSO=", bestcost[-1])
-		return bestcost
+		print(self.myrank)
+		print("PSO--=", gBests[-1])
+		# Elde edilen çıktılar döndürülüyor
+		# out = {}
+		# out["pop"] = pop
+		# out["bestcost"] = bestcost
+		# out["bests"] = gBests
+		# return out
+		return gBests
 
 	# def dicttonp(self, pop):
 	# 	ret = np.empty((3, self.npop, self.nvar))

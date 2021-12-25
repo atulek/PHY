@@ -1,4 +1,6 @@
 # Import libraries, problems and algorithm
+import numpy as np
+
 from DE import DE
 from ABC import ABC
 from PSO import PSO
@@ -12,10 +14,10 @@ comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
 
-# Glocal Parameters
-testFunction = TestFunc().schwefel()
-repeat = 1
-maxIt = 1000
+# Global Parameters
+testFunction = TestFunc().rosenbrock()
+repeat = 5
+maxIt = 500
 nPop = 100
 nVar = 50
 
@@ -39,13 +41,12 @@ k = 7
 
 # Migration Parameters
 migRate = 25
-migInterval = 50
+migInterval = 25
 mRate = int(nPop/100*migRate)
 
 # PSO Default parametreleri
 pso = PSO(
     test_func=testFunction,
-    repeat=repeat,
     maxit=maxIt,
     npop=nPop,
     nvar=nVar,
@@ -62,7 +63,6 @@ pso = PSO(
 
 abc = ABC(
     test_func=testFunction,
-    repeat=repeat,
     maxit=maxIt,
     npop=nPop,
     nvar=nVar,
@@ -75,7 +75,6 @@ abc = ABC(
 
 de = DE(
     test_func=testFunction,
-    repeat=repeat,
     maxit=maxIt,
     npop=nPop,
     nvar=nVar,
@@ -106,19 +105,38 @@ ga = GA(
     minterval=migInterval
 )
 
-if rank % 4 == 0:
-    ga.run()
-elif rank % 4 == 1:
-    abc.run()
-elif rank % 4 == 2:
-    ga.run()
-elif rank % 4 == 3:
-    de.run()
+# bestcost = np.empty(repeat, float)
+if rank == 0:
+    meanCosts = np.empty(maxIt, float)
+    allCosts = np.empty((repeat, maxIt), float)
+    allLastCosts = np.empty(repeat, float)
+
+for rpt in range(repeat):
+    if rank % 3 == 0:
+        bestcost = abc.run()
+    elif rank % 3 == 1:
+        bestcost = de.run()
+    elif rank % 3 == 2:
+        bestcost = pso.run()
+    # elif rank % 4 == 3:
+    #     bestcost = pso.run()
+    if rank == 0:
+        allLastCosts[rpt] = bestcost[-1]
+        allCosts[rpt] = bestcost
+        # meanCosts = np.mean(bestcost, float)
+if rank == 0:
+    meanCosts = np.mean(allCosts, axis=0)
+    print(allLastCosts)
+    print(meanCosts)
+
+
+
+
 # bestcost = pso.run()
 # result = de.run()
 # print(gbest['cost'])
 
-# Optimum PSO sonuç grafiği çizdiriliyor
+
 # plt.semilogy(bestcost)
 # plt.xlim(0, 1000)
 # plt.xlabel('İterasyonlar')
