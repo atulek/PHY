@@ -126,7 +126,10 @@ for rpt in range(repeat):
         # meanCosts = np.mean(bestcost, float)
 if rank == 0:
     meanCosts = np.mean(allCosts, axis=0)
-    print(allLastCosts)
+    minAllLastCosts = np.min(allLastCosts)
+    maxAllLastCosts = np.max(allLastCosts)
+    meanAllLastCosts = np.mean(allLastCosts)
+    print(allLastCosts, "\n", minAllLastCosts, "\n", maxAllLastCosts, "\n", meanAllLastCosts)
     print(meanCosts)
 
 
