@@ -47,9 +47,9 @@ mRate = int(nPop/100*migRate)
 
 # File name
 if migInterval > maxIt:
-    fileName = "IPH%s_rate-%d_int-%d_no.txt" % (filename, migRate, migInterval)
+    fileName = "IPH_%s_rate-%d_int-%d_no.txt" % (filename, migRate, migInterval)
 else:
-    fileName = "IPH%s_rate-%d_int-%d_yes.txt" % (filename, migRate, migInterval)
+    fileName = "IPH_%s_rate-%d_int-%d_yes.txt" % (filename, migRate, migInterval)
 # PSO Default parametreleri
 pso = PSO(
     test_func=testFunction,
