@@ -47,9 +47,9 @@ mRate = int(nPop/100*migRate)
 
 # File name
 if migInterval > maxIt:
-    fileName = "%s_rate-%d_int-%d_no.txt" % (filename, migRate, migInterval)
+    fileName = "IPH%s_rate-%d_int-%d_no.txt" % (filename, migRate, migInterval)
 else:
-    fileName = "%s_rate-%d_int-%d_yes.txt" % (filename, migRate, migInterval)
+    fileName = "IPH%s_rate-%d_int-%d_yes.txt" % (filename, migRate, migInterval)
 # PSO Default parametreleri
 pso = PSO(
     test_func=testFunction,
@@ -149,10 +149,14 @@ def writefile(filename):
     f.write(f"Max value=  {maxAllLastCosts}\n")
     f.write(f"Mean value= {meanAllLastCosts}\n")
     f.write("\n\n")
+    f.write("Her tekrarın sonucu")
+    f.write("\n")
     for i in range(repeat):
         f.write(str(allLastCosts[i]))
         f.write("\n")
     f.write("\n\n")
+    f.write("En iyi sonucun itersayon adımları")
+    f.write("\n")
     for i in range(maxIt):
         f.write(str(meanCosts[i]))
         f.write("\n")
