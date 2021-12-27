@@ -108,9 +108,9 @@ class PSO:
 			lBest = bestcost[it]
 			self.comm.Reduce([lBest, MPI.FLOAT], [gBest, MPI.FLOAT], op=MPI.MIN, root=0)
 			gBests[it] = gBest
-		print("PSO=", bestcost[-1])
-		print(self.myrank)
-		print("PSO--=", gBests[-1])
+		# print("PSO=", bestcost[-1])
+		# print(self.myrank)
+		# print("PSO--=", gBests[-1])
 		# Elde edilen çıktılar döndürülüyor
 		# out = {}
 		# out["pop"] = pop

@@ -7,12 +7,14 @@ class TestFunc:
     costfunc = None             # Setup.py dosyasında belirlenen maliyet fonk.
     varmin = None               # Problem minimum default sınır
     varmax = None               # Problem minimum default sınır
+    name = None                 # Problem adı
 
     # Sphere test fonksiyonu
     def sphere(self):
         self.costfunc = lambda x: sum(x ** 2)
         self.varmin = -5.12
         self.varmax = 5.12
+        self.name = "sphere"
         return self
 
     # Rosenbrock test fonksiyonu
@@ -20,13 +22,15 @@ class TestFunc:
         self.costfunc = lambda x: sum((1 - x[:-1]) ** 2) + 100 * sum((x[1:] - x[:-1] ** 2) ** 2)
         self.varmin = -2.048
         self.varmax = 2.048
+        self.name = "rosenbrock"
         return self
 
     # Zakharov test fonksiyonu
-    def zakharow(self):
+    def zakharov(self):
         self.costfunc = self.__zakharowf
         self.varmin = -5
         self.varmax = 10
+        self.name = "zakharov"
         return self
 
     # Schwefel test fonksiyonu
@@ -34,6 +38,7 @@ class TestFunc:
         self.costfunc = lambda x: 418.9829 * len(x) - sum(x * sin(sqrt(abs(x))))
         self.varmin = -500.0
         self.varmax = 500.0
+        self.name = "schwefel"
         return self
 
     # Rastrigin test fonksiyonu
@@ -41,6 +46,7 @@ class TestFunc:
         self.costfunc = lambda x: 10 * len(x) + sum(x**2 - 10 * cos(2 * pi * x))
         self.varmin = -5.12
         self.varmax = 5.12
+        self.name = "rastrigin"
         return self
 
     # Ackley test fonksiyonu
@@ -48,6 +54,7 @@ class TestFunc:
         self.costfunc = self.__ackleyf
         self.varmin = -5.12
         self.varmax = 5.12
+        self.name = "ackley"
         return self
 
     def __zakharowf(self, x):

@@ -16,10 +16,11 @@ rank = comm.Get_rank()
 
 # Global Parameters
 testFunction = TestFunc().rosenbrock()
-repeat = 5
+repeat = 3
 maxIt = 500
 nPop = 100
 nVar = 50
+filename = testFunction.name
 
 # PSO Parameters
 c1 = 1.4962
@@ -44,6 +45,11 @@ migRate = 25
 migInterval = 25
 mRate = int(nPop/100*migRate)
 
+# File name
+if migInterval > maxIt:
+    fileName = "%s_rate-%d_int-%d_no.txt" % (filename, migRate, migInterval)
+else:
+    fileName = "%s_rate-%d_int-%d_yes.txt" % (filename, migRate, migInterval)
 # PSO Default parametreleri
 pso = PSO(
     test_func=testFunction,
@@ -105,7 +111,6 @@ ga = GA(
     minterval=migInterval
 )
 
-# bestcost = np.empty(repeat, float)
 if rank == 0:
     meanCosts = np.empty(maxIt, float)
     allCosts = np.empty((repeat, maxIt), float)
@@ -123,34 +128,36 @@ for rpt in range(repeat):
     if rank == 0:
         allLastCosts[rpt] = bestcost[-1]
         allCosts[rpt] = bestcost
-        # meanCosts = np.mean(bestcost, float)
+
 if rank == 0:
     meanCosts = np.mean(allCosts, axis=0)
     minAllLastCosts = np.min(allLastCosts)
     maxAllLastCosts = np.max(allLastCosts)
     meanAllLastCosts = np.mean(allLastCosts)
     print(allLastCosts, "\n", minAllLastCosts, "\n", maxAllLastCosts, "\n", meanAllLastCosts)
-    print(meanCosts)
 
 
+def writefile(filename):
+    f = open(filename, "w")
+    f.write(filename)
+    f.write("\n")
+    f.write(f"Sub pop sayisi= {size}\n")
+    f.write(f"Problem boyutu= {nVar}\n")
+    f.write(f"Tekrar sayisi= {repeat}\n")
+    f.write("\n")
+    f.write(f"Min value=  {minAllLastCosts}\n")
+    f.write(f"Max value=  {maxAllLastCosts}\n")
+    f.write(f"Mean value= {meanAllLastCosts}\n")
+    f.write("\n\n")
+    for i in range(repeat):
+        f.write(str(allLastCosts[i]))
+        f.write("\n")
+    f.write("\n\n")
+    for i in range(maxIt):
+        f.write(str(meanCosts[i]))
+        f.write("\n")
+    f.close()
 
 
-# bestcost = pso.run()
-# result = de.run()
-# print(gbest['cost'])
-
-
-# plt.semilogy(bestcost)
-# plt.xlim(0, 1000)
-# plt.xlabel('İterasyonlar')
-# plt.ylabel('Maliyet Fonksiyonu')
-# plt.title('Particle Swarm Optimization (PSO)')
-# plt.grid(True)
-# plt.show()
-
-# PSO için maliyet fonksiyonu GA olarak atanıyor
-# PSO.CostFunction = gao
-# GA parametre aralıkları tanımlanıyor. Sırasıyla:
-# pc, gamma, mu, sigma, selectionType
-# PSO parametreleri belirleniyor
-# c1, c2 [0,5 - 2,5] w = [0,4 -0,9]
+if rank == 0:
+    writefile(fileName)

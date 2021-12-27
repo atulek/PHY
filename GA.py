@@ -131,9 +131,9 @@ class GA:
             lBest = bestcost[it]
             self.comm.Reduce([lBest, MPI.FLOAT], [gBest, MPI.FLOAT], op=MPI.MIN, root=0)
             gBests[it] = gBest
-        print("GA=", bestcost[-1])
-        print(self.myrank)
-        print("GA---=", gBests[-1])
+        # print("GA=", bestcost[-1])
+        # print(self.myrank)
+        # print("GA---=", gBests[-1])
 
         # Elde edilen çıktılar döndürülüyor
         # out = {}
